@@ -1,0 +1,2583 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>演唱会抢票系统 - 管理端</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.5/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .sidebar {
+            width: 240px;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            background-color: #2d3748;
+            color: white;
+            overflow-y: auto;
+            transition: all 0.3s;
+        }
+        .sidebar-header {
+            padding: 20px;
+            border-bottom: 1px solid #4a5568;
+        }
+        .sidebar-header h3 {
+            margin: 0;
+            font-size: 1.5rem;
+        }
+        .sidebar-menu {
+            padding: 0;
+        }
+        .sidebar-menu-item {
+            list-style: none;
+        }
+        .sidebar-link {
+            display: flex;
+            align-items: center;
+            padding: 15px 20px;
+            color: #e2e8f0;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .sidebar-link:hover {
+            background-color: #4a5568;
+            color: white;
+        }
+        .sidebar-link.active {
+            background-color: #4299e1;
+            color: white;
+        }
+        .sidebar-link i {
+            margin-right: 10px;
+        }
+        .main-content {
+            margin-left: 240px;
+            transition: all 0.3s;
+        }
+        .navbar {
+            background-color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            height: 60px;
+        }
+        .content {
+            padding: 20px;
+        }
+        .card {
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+        .card-header {
+            background-color: #f7fafc;
+            border-bottom: 1px solid #e2e8f0;
+            font-weight: bold;
+        }
+        .stats-card {
+            text-align: center;
+            padding: 20px;
+        }
+        .stats-card i {
+            font-size: 3rem;
+            margin-bottom: 10px;
+            color: #4299e1;
+        }
+        .stats-number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2d3748;
+        }
+        .stats-label {
+            color: #718096;
+        }
+        .btn-add {
+            background-color: #38a169;
+            color: white;
+        }
+        .btn-add:hover {
+            background-color: #2f855a;
+            color: white;
+        }
+        .action-btn {
+            margin: 0 5px;
+            padding: 5px 10px;
+            font-size: 0.8rem;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        .search-bar {
+            margin-bottom: 20px;
+        }
+        .pagination {
+            margin-top: 20px;
+            justify-content: center;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            display: none;
+        }
+        .table-responsive {
+            max-height: 600px;
+            overflow-y: auto;
+        }
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+            }
+            .main-content {
+                margin-left: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载中遮罩 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+    </div>
+
+    <!-- 侧边栏 -->
+    <div class="sidebar">
+        <div class="sidebar-header">
+            <h3>EasyCatch 管理</h3>
+        </div>
+        <ul class="sidebar-menu">
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link active" id="nav-dashboard">
+                    <i class="bi bi-speedometer2"></i>
+                    控制台
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link" id="nav-concerts">
+                    <i class="bi bi-music-note-beamed"></i>
+                    演唱会管理
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link" id="nav-events">
+                    <i class="bi bi-calendar-event"></i>
+                    演出场次管理
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link" id="nav-tickets">
+                    <i class="bi bi-ticket-percent"></i>
+                    票档管理
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link" id="nav-orders">
+                    <i class="bi bi-receipt"></i>
+                    订单管理
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link" id="nav-users">
+                    <i class="bi bi-people"></i>
+                    用户管理
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link" id="nav-singers">
+                    <i class="bi bi-person-stand"></i>
+                    歌手管理
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link" id="nav-organizers">
+                    <i class="bi bi-building"></i>
+                    主办方管理
+                </a>
+            </li>
+            <li class="sidebar-menu-item">
+                <a href="#" class="sidebar-link" id="nav-venues">
+                    <i class="bi bi-building2"></i>
+                    场馆管理
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- 主内容区 -->
+    <div class="main-content">
+        <!-- 顶部导航栏 -->
+        <nav class="navbar navbar-expand-lg navbar-light">
+            <div class="container-fluid">
+                <button class="btn btn-outline-primary" id="toggleSidebar">
+                    <i class="bi bi-list"></i>
+                </button>
+                <div class="ml-auto">
+                    <div class="dropdown">
+                        <button class="btn btn-outline-primary dropdown-toggle" type="button" id="adminMenuDropdown" data-bs-toggle="dropdown">
+                            <i class="bi bi-person-circle"></i>
+                            <span id="adminUsername">管理员</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            <li><a class="dropdown-item" href="#" id="btn-logout">退出登录</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- 内容区域 -->
+        <div class="content">
+            <!-- 控制台页面 -->
+            <div id="dashboardPage">
+                <h2>管理控制台</h2>
+                <div class="row mt-4">
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-music-note-beamed"></i>
+                            <div class="stats-number" id="stats-concerts">0</div>
+                            <div class="stats-label">演唱会总数</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-ticket-percent"></i>
+                            <div class="stats-number" id="stats-tickets">0</div>
+                            <div class="stats-label">门票总数</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-receipt"></i>
+                            <div class="stats-number" id="stats-orders">0</div>
+                            <div class="stats-label">订单总数</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="card stats-card">
+                            <i class="bi bi-people"></i>
+                            <div class="stats-number" id="stats-users">0</div>
+                            <div class="stats-label">用户总数</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">近期订单趋势</div>
+                            <div class="card-body">
+                                <canvas id="orderChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card">
+                            <div class="card-header">销售额统计</div>
+                            <div class="card-body">
+                                <canvas id="salesChart" width="400" height="200"></canvas>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row mt-4">
+                    <div class="col-md-12">
+                        <div class="card">
+                            <div class="card-header">最近订单</div>
+                            <div class="card-body">
+                                <div class="table-responsive">
+                                    <table class="table table-hover">
+                                        <thead>
+                                            <tr>
+                                                <th>订单号</th>
+                                                <th>用户</th>
+                                                <th>演唱会</th>
+                                                <th>金额</th>
+                                                <th>状态</th>
+                                                <th>时间</th>
+                                                <th>操作</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="recentOrdersTable">
+                                            <!-- 订单数据将通过JavaScript动态加载 -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 演唱会管理页面 -->
+            <div id="concertsPage" class="d-none">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>演唱会管理</h4>
+                        <button class="btn btn-add" data-bs-toggle="modal" data-bs-target="#addConcertModal">
+                            <i class="bi bi-plus"></i> 添加演唱会
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="搜索演唱会名称" id="searchConcertsInput">
+                                <button class="btn btn-outline-primary" type="button" id="searchConcertsBtn">搜索</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>演唱会名称</th>
+                                        <th>歌手</th>
+                                        <th>主办方</th>
+                                        <th>开始时间</th>
+                                        <th>结束时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="concertsTable">
+                                    <!-- 演唱会数据将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                        <nav aria-label="Page navigation" class="pagination">
+                            <ul class="pagination" id="concertsPagination">
+                                <!-- 分页控件将通过JavaScript动态加载 -->
+                            </ul>
+                        </nav>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 演出场次管理页面 -->
+            <div id="eventsPage" class="d-none">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>演出场次管理</h4>
+                        <button class="btn btn-add" data-bs-toggle="modal" data-bs-target="#addEventModal">
+                            <i class="bi bi-plus"></i> 添加场次
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="input-group">
+                                <select class="form-control" id="filterConcertEvents">
+                                    <option value="">所有演唱会</option>
+                                    <!-- 演唱会选项将通过JavaScript动态加载 -->
+                                </select>
+                                <button class="btn btn-outline-primary" type="button" id="searchEventsBtn">筛选</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>演唱会</th>
+                                        <th>场馆</th>
+                                        <th>演出日期</th>
+                                        <th>演出时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="eventsTable">
+                                    <!-- 场次数据将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 票档管理页面 -->
+            <div id="ticketsPage" class="d-none">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>票档管理</h4>
+                        <button class="btn btn-add" data-bs-toggle="modal" data-bs-target="#addTicketModal">
+                            <i class="bi bi-plus"></i> 添加票档
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="input-group">
+                                <select class="form-control" id="filterEventTickets">
+                                    <option value="">所有场次</option>
+                                    <!-- 场次选项将通过JavaScript动态加载 -->
+                                </select>
+                                <button class="btn btn-outline-primary" type="button" id="searchTicketsBtn">筛选</button>
+                            </div>
+                        </div>
+                        <div id="ticketsContainer">
+                            <!-- 票档数据将按场次分组动态加载 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 订单管理页面 -->
+            <div id="ordersPage" class="d-none">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>订单管理</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="搜索订单号或用户名" id="searchOrdersInput">
+                                <select class="form-control" style="width: auto; margin: 0 10px;" id="filterOrderStatus">
+                                    <option value="">全部状态</option>
+                                    <option value="0">未支付</option>
+                                    <option value="1">已支付</option>
+                                </select>
+                                <button class="btn btn-outline-primary" type="button" id="searchOrdersBtn">搜索</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>订单号</th>
+                                        <th>用户</th>
+                                        <th>金额</th>
+                                        <th>票数</th>
+                                        <th>状态</th>
+                                        <th>创建时间</th>
+                                        <th>支付时间</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="ordersTable">
+                                    <!-- 订单数据将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 用户管理页面 -->
+            <div id="usersPage" class="d-none">
+                <div class="card">
+                    <div class="card-header">
+                        <h4>用户管理</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="搜索用户名" id="searchUsersInput">
+                                <button class="btn btn-outline-primary" type="button" id="searchUsersBtn">搜索</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>用户名</th>
+                                        <th>邮箱</th>
+                                        <th>手机号</th>
+                                        <th>注册时间</th>
+                                        <th>角色</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="usersTable">
+                                    <!-- 用户数据将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 歌手管理页面 -->
+            <div id="singersPage" class="d-none">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>歌手管理</h4>
+                        <button class="btn btn-add" data-bs-toggle="modal" data-bs-target="#addSingerModal">
+                            <i class="bi bi-plus"></i> 添加歌手
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="搜索歌手名称" id="searchSingersInput">
+                                <button class="btn btn-outline-primary" type="button" id="searchSingersBtn">搜索</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>歌手名称</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="singersTable">
+                                    <!-- 歌手数据将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 主办方管理页面 -->
+            <div id="organizersPage" class="d-none">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>主办方管理</h4>
+                        <button class="btn btn-add" data-bs-toggle="modal" data-bs-target="#addOrganizerModal">
+                            <i class="bi bi-plus"></i> 添加主办方
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="搜索主办方名称" id="searchOrganizersInput">
+                                <button class="btn btn-outline-primary" type="button" id="searchOrganizersBtn">搜索</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>主办方名称</th>
+                                        <th>联系人</th>
+                                        <th>联系电话</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="organizersTable">
+                                    <!-- 主办方数据将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 场馆管理页面 -->
+            <div id="venuesPage" class="d-none">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h4>场馆管理</h4>
+                        <button class="btn btn-add" data-bs-toggle="modal" data-bs-target="#addVenueModal">
+                            <i class="bi bi-plus"></i> 添加场馆
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="search-bar">
+                            <div class="input-group">
+                                <input type="text" class="form-control" placeholder="搜索场馆名称" id="searchVenuesInput">
+                                <button class="btn btn-outline-primary" type="button" id="searchVenuesBtn">搜索</button>
+                            </div>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>ID</th>
+                                        <th>场馆名称</th>
+                                        <th>地址</th>
+                                        <th>容量</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="venuesTable">
+                                    <!-- 场馆数据将通过JavaScript动态加载 -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加演唱会模态框 -->
+    <div class="modal fade" id="addConcertModal" tabindex="-1" aria-labelledby="addConcertModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addConcertModalLabel">添加演唱会</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addConcertForm">
+                        <div class="form-group">
+                            <label for="concertName">演唱会名称</label>
+                            <input type="text" class="form-control" id="concertName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="concertSingers">歌手（可多选）</label>
+                            <select class="form-control" id="concertSingers" multiple required>
+                                <!-- 歌手选项将通过JavaScript动态加载 -->
+                            </select>
+                            <small class="form-text text-muted">按住Ctrl键可多选</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="concertStartTime">开始时间</label>
+                            <input type="datetime-local" class="form-control" id="concertStartTime" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="concertEndTime">结束时间（可选）</label>
+                            <input type="datetime-local" class="form-control" id="concertEndTime">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="saveConcertBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 编辑演唱会模态框 -->
+    <div class="modal fade" id="editConcertModal" tabindex="-1" aria-labelledby="editConcertModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="editConcertModalLabel">编辑演唱会</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="editConcertForm">
+                        <input type="hidden" id="editConcertId">
+                        <div class="form-group">
+                            <label for="editConcertName">演唱会名称</label>
+                            <input type="text" class="form-control" id="editConcertName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editConcertSingers">歌手（可多选）</label>
+                            <select class="form-control" id="editConcertSingers" multiple required>
+                                <!-- 歌手选项将通过JavaScript动态加载 -->
+                            </select>
+                            <small class="form-text text-muted">按住Ctrl键可多选</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="editConcertStartTime">开始时间</label>
+                            <input type="datetime-local" class="form-control" id="editConcertStartTime" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="editConcertEndTime">结束时间（可选）</label>
+                            <input type="datetime-local" class="form-control" id="editConcertEndTime">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="updateConcertBtn">更新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加场次模态框 -->
+    <div class="modal fade" id="addEventModal" tabindex="-1" aria-labelledby="addEventModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addEventModalLabel">添加演出场次</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addEventForm">
+                        <div class="form-group">
+                            <label for="eventConcert">演唱会</label>
+                            <select class="form-control" id="eventConcert" required>
+                                <!-- 演唱会选项将通过JavaScript动态加载 -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventVenue">场馆</label>
+                            <select class="form-control" id="eventVenue" required>
+                                <!-- 场馆选项将通过JavaScript动态加载 -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventDate">演出日期</label>
+                            <input type="date" class="form-control" id="eventDate" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="eventTime">演出时间</label>
+                            <input type="time" class="form-control" id="eventTime" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="saveEventBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加票档模态框 -->
+    <div class="modal fade" id="addTicketModal" tabindex="-1" aria-labelledby="addTicketModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addTicketModalLabel">添加票档</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addTicketForm">
+                        <div class="form-group">
+                            <label for="ticketEvent">演出场次</label>
+                            <select class="form-control" id="ticketEvent" required>
+                                <!-- 场次选项将通过JavaScript动态加载 -->
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="ticketName">票档名称</label>
+                            <input type="text" class="form-control" id="ticketName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ticketPrice">价格</label>
+                            <input type="number" class="form-control" id="ticketPrice" min="0" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="ticketQuantity">总数量</label>
+                            <input type="number" class="form-control" id="ticketQuantity" min="1" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="saveTicketBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加歌手模态框 -->
+    <div class="modal fade" id="addSingerModal" tabindex="-1" aria-labelledby="addSingerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addSingerModalLabel">添加歌手</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addSingerForm">
+                        <div class="form-group">
+                            <label for="singerName">歌手名称</label>
+                            <input type="text" class="form-control" id="singerName" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="saveSingerBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加主办方模态框 -->
+    <div class="modal fade" id="addOrganizerModal" tabindex="-1" aria-labelledby="addOrganizerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addOrganizerModalLabel">添加主办方</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addOrganizerForm">
+                        <div class="form-group">
+                            <label for="organizerName">主办方名称</label>
+                            <input type="text" class="form-control" id="organizerName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="organizerContact">联系人</label>
+                            <input type="text" class="form-control" id="organizerContact">
+                        </div>
+                        <div class="form-group">
+                            <label for="organizerPhone">联系电话</label>
+                            <input type="tel" class="form-control" id="organizerPhone">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="saveOrganizerBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 添加场馆模态框 -->
+    <div class="modal fade" id="addVenueModal" tabindex="-1" aria-labelledby="addVenueModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addVenueModalLabel">添加场馆</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <form id="addVenueForm">
+                        <div class="form-group">
+                            <label for="venueName">场馆名称</label>
+                            <input type="text" class="form-control" id="venueName" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="venueAddress">地址</label>
+                            <input type="text" class="form-control" id="venueAddress" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="venueCapacity">容量</label>
+                            <input type="number" class="form-control" id="venueCapacity" min="1" required>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="saveVenueBtn">保存</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 订单详情模态框 -->
+    <div class="modal fade" id="orderDetailModal" tabindex="-1" aria-labelledby="orderDetailModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="orderDetailModalLabel">订单详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="orderDetailContent">
+                    <!-- 订单详情将通过JavaScript动态加载 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 歌手演唱会模态框 -->
+    <div class="modal fade" id="singerConcertsModal" tabindex="-1" aria-labelledby="singerConcertsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="singerConcertsModalLabel">歌手演唱会</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>演唱会ID</th>
+                                    <th>演唱会名称</th>
+                                    <th>主办方</th>
+                                    <th>开始时间</th>
+                                    <th>结束时间</th>
+                                    <th>其他歌手</th>
+                                </tr>
+                            </thead>
+                            <tbody id="singerConcertsTable">
+                                <!-- 演唱会数据将通过JavaScript动态加载 -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API基础URL
+        const API_BASE_URL = 'http://127.0.0.1:5000/api/admin';
+        
+        // 当前管理员信息
+        let currentAdmin = null;
+        
+        // DOM元素
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        
+        // 显示加载状态
+        function showLoading() {
+            loadingOverlay.style.display = 'flex';
+        }
+        
+        // 隐藏加载状态
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+        
+        // 显示通知消息
+        function showNotification(message, isError = false) {
+            // 创建通知元素
+            const notification = document.createElement('div');
+            notification.className = `position-fixed top-20 right-20 p-4 rounded shadow-lg ${isError ? 'bg-danger text-white' : 'bg-success text-white'} z-50`;
+            notification.textContent = message;
+            
+            // 添加到文档
+            document.body.appendChild(notification);
+            
+            // 自动消失
+            setTimeout(() => {
+                notification.style.transition = 'opacity 0.5s';
+                notification.style.opacity = '0';
+                setTimeout(() => {
+                    document.body.removeChild(notification);
+                }, 500);
+            }, 3000);
+        }
+        
+        // 检查管理员登录状态
+        function checkAdminLogin() {
+            const userJson = localStorage.getItem('user');
+            if (userJson) {
+                const user = JSON.parse(userJson);
+                if (user.is_admin) {
+                    currentAdmin = user;
+                    document.getElementById('adminUsername').textContent = user.username;
+                    return true;
+                }
+            }
+            // 如果不是管理员，跳转到用户登录页
+            window.location.href = 'index.html';
+            return false;
+        }
+        
+        // 加载统计数据
+        async function loadDashboardStats() {
+            showLoading();
+            try {
+                // 直接从现有接口获取数据，不依赖stats接口
+                // 获取演唱会总数
+                const concertsResponse = await fetch(`${API_BASE_URL}/concerts`);
+                const concertsData = await concertsResponse.json();
+                const totalConcerts = concertsData.status === 'success' ? concertsData.data.length : 0;
+                document.getElementById('stats-concerts').textContent = totalConcerts;
+                
+                // 获取订单总数
+                const ordersResponse = await fetch(`${API_BASE_URL}/orders`);
+                const ordersData = await ordersResponse.json();
+                const totalOrders = ordersData.status === 'success' ? ordersData.data.length : 0;
+                document.getElementById('stats-orders').textContent = totalOrders;
+                
+                // 获取用户总数
+                const usersResponse = await fetch(`${API_BASE_URL}/users`);
+                const usersData = await usersResponse.json();
+                const totalUsers = usersData.status === 'success' ? usersData.data.length : 0;
+                document.getElementById('stats-users').textContent = totalUsers;
+                
+                // 票总数暂时设为0
+                document.getElementById('stats-tickets').textContent = 0;
+                
+                // 绘制空图表
+                renderCharts({});
+                
+                // 加载最近订单
+                if (ordersData.status === 'success') {
+                    loadRecentOrders(ordersData.data.slice(0, 10)); // 只显示最近10个订单
+                } else {
+                    loadRecentOrders([]);
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 绘制图表
+        function renderCharts(chartData) {
+            // 订单趋势图表
+            const orderCtx = document.getElementById('orderChart').getContext('2d');
+            new Chart(orderCtx, {
+                type: 'line',
+                data: {
+                    labels: chartData.order_dates || [],
+                    datasets: [{
+                        label: '订单数量',
+                        data: chartData.order_counts || [],
+                        borderColor: '#4299e1',
+                        backgroundColor: 'rgba(66, 153, 225, 0.1)',
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+            
+            // 销售额图表
+            const salesCtx = document.getElementById('salesChart').getContext('2d');
+            new Chart(salesCtx, {
+                type: 'bar',
+                data: {
+                    labels: chartData.sales_dates || [],
+                    datasets: [{
+                        label: '销售额',
+                        data: chartData.sales_amounts || [],
+                        backgroundColor: '#38a169'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                callback: function(value) {
+                                    return '¥' + value;
+                                }
+                            }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // 加载最近订单
+        function loadRecentOrders(orders) {
+            const tableBody = document.getElementById('recentOrdersTable');
+            tableBody.innerHTML = '';
+            
+            if (orders && orders.length > 0) {
+                orders.forEach(order => {
+                    const row = document.createElement('tr');
+                    const status = order.payment_status === 1 ? '已支付' : '未支付';
+                    const statusClass = order.payment_status === 1 ? 'text-success' : 'text-warning';
+                    
+                    row.innerHTML = `
+                        <td>${order.order_id}</td>
+                        <td>${order.username || '-'}</td>
+                        <td>${order.concert_name || '-'}</td>
+                        <td>¥${order.order_amount}</td>
+                        <td class="${statusClass}">${status}</td>
+                        <td>${formatDateTime(order.create_time)}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info view-order-btn" data-order-id="${order.order_id}">查看</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加查看订单详情事件
+                document.querySelectorAll('.view-order-btn').forEach(btn => {
+                    btn.addEventListener('click', () => viewOrderDetail(btn.dataset.orderId));
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="7" class="text-center">暂无订单数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 查看订单详情
+        async function viewOrderDetail(orderId) {
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/orders/${orderId}`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    const order = data.data;
+                    const content = document.getElementById('orderDetailContent');
+                    
+                    let seatsHtml = '';
+                    order.seats.forEach(seat => {
+                        seatsHtml += `
+                            <div class="border p-3 mb-2 rounded">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>演唱会：</strong>${seat.concert_name}</p>
+                                        <p><strong>场馆：</strong>${seat.venue_name}</p>
+                                        <p><strong>日期：</strong>${seat.performance_date}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>票档：</strong>${seat.ticket_name}</p>
+                                        <p><strong>座位号：</strong>${seat.seat_number}</p>
+                                        <p><strong>票价：</strong>¥${seat.ticket_price}</p>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    });
+                    
+                    content.innerHTML = `
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h6>订单信息</h6>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <p><strong>订单号：</strong>${order.order_id}</p>
+                                        <p><strong>用户：</strong>${order.username}</p>
+                                        <p><strong>订单金额：</strong>¥${order.order_amount}</p>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <p><strong>创建时间：</strong>${formatDateTime(order.create_time)}</p>
+                                        <p><strong>支付时间：</strong>${order.payment_time ? formatDateTime(order.payment_time) : '未支付'}</p>
+                                        <p><strong>支付状态：</strong><span class="${order.payment_status === 1 ? 'text-success' : 'text-warning'}">${order.payment_status === 1 ? '已支付' : '未支付'}</span></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card mt-4">
+                            <div class="card-header bg-light">
+                                <h6>票务信息</h6>
+                            </div>
+                            <div class="card-body">
+                                ${seatsHtml}
+                            </div>
+                        </div>
+                    `;
+                    
+                    const modal = new bootstrap.Modal(document.getElementById('orderDetailModal'));
+                    modal.show();
+                }
+            } catch (error) {
+                console.error('Error loading order detail:', error);
+                showNotification('加载订单详情失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 加载演唱会列表
+        async function loadConcerts() {
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/concerts`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderConcertsTable(data.data);
+                    loadConcertSelectors(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading concerts:', error);
+                showNotification('加载演唱会列表失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染演唱会表格
+        function renderConcertsTable(concerts) {
+            const tableBody = document.getElementById('concertsTable');
+            tableBody.innerHTML = '';
+            
+            if (concerts && concerts.length > 0) {
+                concerts.forEach(concert => {
+                    const singers = concert.singers.map(s => s.singer_name).join('、');
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${concert.concert_id}</td>
+                        <td>${concert.concert_name}</td>
+                        <td>${singers}</td>
+                        <td>${concert.organizer_name}</td>
+                        <td>${formatDateTime(concert.start_time)}</td>
+                        <td>${concert.end_time ? formatDateTime(concert.end_time) : '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary edit-concert-btn" data-concert-id="${concert.concert_id}">编辑</button>
+                            <button class="btn btn-sm btn-outline-danger delete-concert-btn" data-concert-id="${concert.concert_id}">删除</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加编辑事件
+                document.querySelectorAll('.edit-concert-btn').forEach(btn => {
+                    btn.addEventListener('click', () => editConcert(btn.dataset.concertId));
+                });
+                
+                // 添加删除事件
+                document.querySelectorAll('.delete-concert-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteConcert(btn.dataset.concertId));
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="7" class="text-center">暂无演唱会数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 加载演唱会选择器
+        function loadConcertSelectors(concerts) {
+            const selects = [
+                document.getElementById('eventConcert'),
+                document.getElementById('filterConcertEvents')
+            ];
+            
+            selects.forEach(select => {
+                if (select) {
+                    select.innerHTML = '<option value="">请选择演唱会</option>';
+                    concerts.forEach(concert => {
+                        const option = document.createElement('option');
+                        option.value = concert.concert_id;
+                        option.textContent = concert.concert_name;
+                        select.appendChild(option);
+                    });
+                }
+            });
+        }
+        
+        // 加载歌手数据（用于添加/编辑演唱会）
+        async function loadConcertDependencies() {
+            try {
+                // 加载歌手
+                const singersResponse = await fetch(`${API_BASE_URL}/singers`);
+                const singersData = await singersResponse.json();
+                if (singersData.status === 'success') {
+                    const singers = [
+                        document.getElementById('concertSingers'),
+                        document.getElementById('editConcertSingers')
+                    ];
+                    
+                    singers.forEach(select => {
+                        if (select) {
+                            select.innerHTML = '';
+                            singersData.data.forEach(singer => {
+                                const option = document.createElement('option');
+                                option.value = singer.singer_id;
+                                option.textContent = singer.singer_name;
+                                select.appendChild(option);
+                            });
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading concert dependencies:', error);
+            }
+        }
+        
+        // 保存演唱会
+        async function saveConcert() {
+            const form = document.getElementById('addConcertForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const concertData = {
+                concert_name: document.getElementById('concertName').value,
+                organizer_name: document.getElementById('concertName').value + '主办方', // 临时生成主办方名称
+                singer_ids: Array.from(document.getElementById('concertSingers').selectedOptions).map(opt => parseInt(opt.value)),
+                start_time: document.getElementById('concertStartTime').value,
+                end_time: document.getElementById('concertEndTime').value || null
+            };
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/concerts`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(concertData)
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('演唱会添加成功');
+                    form.reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addConcertModal'));
+                    modal.hide();
+                    loadConcerts();
+                } else {
+                    showNotification(data.message || '添加失败', true);
+                }
+            } catch (error) {
+                console.error('Error saving concert:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 编辑演唱会
+        async function editConcert(concertId) {
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/concerts/${concertId}`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    const concert = data.data;
+                    
+                    // 填充表单
+                    document.getElementById('editConcertId').value = concert.concert_id;
+                    document.getElementById('editConcertName').value = concert.concert_name;
+                    // 移除对organizer_id的引用，因为数据库中没有这个字段
+                    document.getElementById('editConcertStartTime').value = concert.start_time.slice(0, 16);
+                    if (concert.end_time) {
+                        document.getElementById('editConcertEndTime').value = concert.end_time.slice(0, 16);
+                    }
+                    
+                    // 设置选中的歌手
+                    const singerIds = concert.singers.map(s => s.singer_id);
+                    Array.from(document.getElementById('editConcertSingers').options).forEach(option => {
+                        option.selected = singerIds.includes(parseInt(option.value));
+                    });
+                    
+                    // 显示模态框
+                    const modal = new bootstrap.Modal(document.getElementById('editConcertModal'));
+                    modal.show();
+                }
+            } catch (error) {
+                console.error('Error loading concert for edit:', error);
+                showNotification('加载演唱会信息失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 更新演唱会
+        async function updateConcert() {
+            const form = document.getElementById('editConcertForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const concertId = document.getElementById('editConcertId').value;
+            const concertData = {
+                concert_name: document.getElementById('editConcertName').value,
+                organizer_name: document.getElementById('editConcertName').value + '主办方', // 临时生成主办方名称
+                singer_ids: Array.from(document.getElementById('editConcertSingers').selectedOptions).map(opt => parseInt(opt.value)),
+                start_time: document.getElementById('editConcertStartTime').value,
+                end_time: document.getElementById('editConcertEndTime').value || null
+            };
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/concerts/${concertId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(concertData)
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('演唱会更新成功');
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('editConcertModal'));
+                    modal.hide();
+                    loadConcerts();
+                } else {
+                    showNotification(data.message || '更新失败', true);
+                }
+            } catch (error) {
+                console.error('Error updating concert:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 删除演唱会
+        async function deleteConcert(concertId) {
+            if (!confirm('确定要删除这个演唱会吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/concerts/${concertId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('演唱会删除成功');
+                    loadConcerts();
+                } else {
+                    showNotification(data.message || '删除失败', true);
+                }
+            } catch (error) {
+                console.error('Error deleting concert:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 加载演出场次
+        async function loadEvents(concertId = '') {
+            showLoading();
+            try {
+                let url = `${API_BASE_URL}/events`;
+                if (concertId) {
+                    url += `?concert_id=${concertId}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderEventsTable(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading events:', error);
+                showNotification('加载场次列表失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染场次表格
+        function renderEventsTable(events) {
+            const tableBody = document.getElementById('eventsTable');
+            tableBody.innerHTML = '';
+            
+            if (events && events.length > 0) {
+                events.forEach(event => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${event.event_id}</td>
+                        <td>${event.concert_name}</td>
+                        <td>${event.venue_name}</td>
+                        <td>${event.performance_date}</td>
+                        <td>${event.performance_start_time}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger delete-event-btn" data-event-id="${event.event_id}">删除</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加删除事件
+                document.querySelectorAll('.delete-event-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteEvent(btn.dataset.eventId));
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="6" class="text-center">暂无场次数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 加载场馆数据（使用模拟数据）
+        async function loadVenues() {
+            try {
+                // 使用模拟数据，因为数据库中没有venue表
+                const mockVenues = [
+                    { venue_id: 1, venue_name: '北京国家体育场(鸟巢)' },
+                    { venue_id: 2, venue_name: '上海体育场' },
+                    { venue_id: 3, venue_name: '广州天河体育场' },
+                    { venue_id: 4, venue_name: '成都凤凰山体育公园' }
+                ];
+                
+                const venueSelect = document.getElementById('eventVenue');
+                venueSelect.innerHTML = '';
+                
+                mockVenues.forEach(venue => {
+                    const option = document.createElement('option');
+                    option.value = venue.venue_id;
+                    option.textContent = venue.venue_name;
+                    venueSelect.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading venues:', error);
+            }
+        }
+        
+        // 保存场次
+        async function saveEvent() {
+            const form = document.getElementById('addEventForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            // 获取场馆名称
+            const venueSelect = document.getElementById('eventVenue');
+            const venueName = venueSelect.options[venueSelect.selectedIndex].text;
+            
+            const eventData = {
+                concert_id: parseInt(document.getElementById('eventConcert').value),
+                venue_id: parseInt(document.getElementById('eventVenue').value),
+                venue_name: venueName,
+                performance_date: document.getElementById('eventDate').value,
+                performance_start_time: document.getElementById('eventTime').value
+            };
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/events`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(eventData)
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('场次添加成功');
+                    form.reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addEventModal'));
+                    modal.hide();
+                    loadEvents();
+                    loadEventSelectors();
+                } else {
+                    showNotification(data.message || '添加失败', true);
+                }
+            } catch (error) {
+                console.error('Error saving event:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 删除场次
+        async function deleteEvent(eventId) {
+            if (!confirm('确定要删除这个场次吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/events/${eventId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('场次删除成功');
+                    loadEvents();
+                } else {
+                    showNotification(data.message || '删除失败', true);
+                }
+            } catch (error) {
+                console.error('Error deleting event:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 加载场次选择器（用于票档管理）
+        async function loadEventSelectors() {
+            try {
+                const response = await fetch(`${API_BASE_URL}/events`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    const selects = [
+                        document.getElementById('ticketEvent'),
+                        document.getElementById('filterEventTickets')
+                    ];
+                    
+                    selects.forEach(select => {
+                        if (select) {
+                            select.innerHTML = '<option value="">请选择场次</option>';
+                            data.data.forEach(event => {
+                                const option = document.createElement('option');
+                                option.value = event.event_id;
+                                option.textContent = `${event.concert_name} - ${event.venue_name} - ${event.performance_date}`;
+                                select.appendChild(option);
+                            });
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading event selectors:', error);
+            }
+        }
+        
+        // 加载票档
+        async function loadTickets(eventId = '') {
+            showLoading();
+            try {
+                let url = `${API_BASE_URL}/tickets`;
+                if (eventId) {
+                    url += `?event_id=${eventId}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderTicketsByEvent(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading tickets:', error);
+                showNotification('加载票档列表失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 按场次分组渲染票档
+        function renderTicketsByEvent(tickets) {
+            const container = document.getElementById('ticketsContainer');
+            container.innerHTML = '';
+            
+            if (tickets && tickets.length > 0) {
+                // 按场次分组
+                const ticketsByEvent = {};
+                tickets.forEach(ticket => {
+                    if (!ticketsByEvent[ticket.event_id]) {
+                        ticketsByEvent[ticket.event_id] = {
+                            event_info: {
+                                event_id: ticket.event_id,
+                                concert_name: ticket.concert_name,
+                                venue_name: ticket.venue_name,
+                                performance_date: ticket.performance_date
+                            },
+                            tickets: []
+                        };
+                    }
+                    ticketsByEvent[ticket.event_id].tickets.push(ticket);
+                });
+                
+                // 渲染每个场次的票档
+                Object.values(ticketsByEvent).forEach(eventGroup => {
+                    // 创建场次卡片
+                    const eventCard = document.createElement('div');
+                    eventCard.className = 'card mb-4';
+                    
+                    const eventCardHeader = document.createElement('div');
+                    eventCardHeader.className = 'card-header bg-primary text-white d-flex justify-content-between align-items-center';
+                    eventCardHeader.innerHTML = `
+                        <h5 class="mb-0">
+                            ${eventGroup.event_info.concert_name} - ${eventGroup.event_info.venue_name} - ${eventGroup.event_info.performance_date}
+                        </h5>
+                        <button class="btn btn-sm btn-light" data-bs-toggle="modal" data-bs-target="#addTicketModal" onclick="setCurrentEventId(${eventGroup.event_info.event_id})")>
+                            <i class="bi bi-plus"></i> 添加票档
+                        </button>
+                    `;
+                    
+                    const eventCardBody = document.createElement('div');
+                    eventCardBody.className = 'card-body';
+                    
+                    // 创建票档表格
+                    const ticketsTable = document.createElement('table');
+                    ticketsTable.className = 'table table-hover';
+                    
+                    const tableHead = document.createElement('thead');
+                    tableHead.innerHTML = `
+                        <tr>
+                            <th>票档ID</th>
+                            <th>票档名称</th>
+                            <th>价格</th>
+                            <th>总数量</th>
+                            <th>剩余数量</th>
+                            <th>操作</th>
+                        </tr>
+                    `;
+                    
+                    const tableBody = document.createElement('tbody');
+                    eventGroup.tickets.forEach(ticket => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${ticket.ticket_id}</td>
+                            <td>${ticket.ticket_name}</td>
+                            <td>¥${ticket.price}</td>
+                            <td>${ticket.total_quantity}</td>
+                            <td>${ticket.remaining_quantity}</td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-danger delete-ticket-btn" data-ticket-id="${ticket.ticket_id}">删除</button>
+                            </td>
+                        `;
+                        tableBody.appendChild(row);
+                    });
+                    
+                    ticketsTable.appendChild(tableHead);
+                    ticketsTable.appendChild(tableBody);
+                    eventCardBody.appendChild(ticketsTable);
+                    
+                    eventCard.appendChild(eventCardHeader);
+                    eventCard.appendChild(eventCardBody);
+                    container.appendChild(eventCard);
+                });
+                
+                // 添加删除事件
+                document.querySelectorAll('.delete-ticket-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteTicket(btn.dataset.ticketId));
+                });
+            } else {
+                container.innerHTML = '<div class="text-center py-5">暂无票档数据</div>';
+            }
+        }
+        
+        // 设置当前选择的场次ID（用于添加票档）
+        function setCurrentEventId(eventId) {
+            document.getElementById('ticketEvent').value = eventId;
+        }
+        
+        // 保存票档
+        async function saveTicket() {
+            const form = document.getElementById('addTicketForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const ticketData = {
+                event_id: parseInt(document.getElementById('ticketEvent').value),
+                ticket_name: document.getElementById('ticketName').value,
+                price: parseFloat(document.getElementById('ticketPrice').value),
+                total_quantity: parseInt(document.getElementById('ticketQuantity').value)
+            };
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/tickets`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(ticketData)
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('票档添加成功');
+                    form.reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addTicketModal'));
+                    modal.hide();
+                    loadTickets();
+                } else {
+                    showNotification(data.message || '添加失败', true);
+                }
+            } catch (error) {
+                console.error('Error saving ticket:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 删除票档
+        async function deleteTicket(ticketId) {
+            if (!confirm('确定要删除这个票档吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/tickets/${ticketId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('票档删除成功');
+                    loadTickets();
+                } else {
+                    showNotification(data.message || '删除失败', true);
+                }
+            } catch (error) {
+                console.error('Error deleting ticket:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 加载订单
+        async function loadOrders(keyword = '', status = '') {
+            showLoading();
+            try {
+                let url = `${API_BASE_URL}/orders?`;
+                if (keyword) url += `keyword=${encodeURIComponent(keyword)}&`;
+                if (status !== '') url += `status=${status}&`;
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderOrdersTable(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading orders:', error);
+                showNotification('加载订单列表失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染订单表格
+        function renderOrdersTable(orders) {
+            const tableBody = document.getElementById('ordersTable');
+            tableBody.innerHTML = '';
+            
+            if (orders && orders.length > 0) {
+                orders.forEach(order => {
+                    const row = document.createElement('tr');
+                    const status = order.payment_status === 1 ? '已支付' : '未支付';
+                    const statusClass = order.payment_status === 1 ? 'text-success' : 'text-warning';
+                    
+                    row.innerHTML = `
+                        <td>${order.order_id}</td>
+                        <td>${order.username || '-'}</td>
+                        <td>¥${order.order_amount}</td>
+                        <td>${order.total_tickets || 0}</td>
+                        <td class="${statusClass}">${status}</td>
+                        <td>${formatDateTime(order.create_time)}</td>
+                        <td>${order.payment_time ? formatDateTime(order.payment_time) : '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info view-order-btn" data-order-id="${order.order_id}">查看</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加查看订单详情事件
+                document.querySelectorAll('.view-order-btn').forEach(btn => {
+                    btn.addEventListener('click', () => viewOrderDetail(btn.dataset.orderId));
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="8" class="text-center">暂无订单数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 加载用户
+        async function loadUsers(keyword = '') {
+            showLoading();
+            try {
+                let url = `${API_BASE_URL}/users`;
+                if (keyword) {
+                    url += `?keyword=${encodeURIComponent(keyword)}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderUsersTable(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showNotification('加载用户列表失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染用户表格
+        function renderUsersTable(users) {
+            const tableBody = document.getElementById('usersTable');
+            tableBody.innerHTML = '';
+            
+            if (users && users.length > 0) {
+                users.forEach(user => {
+                    const row = document.createElement('tr');
+                    const role = user.is_admin ? '管理员' : '普通用户';
+                    
+                    row.innerHTML = `
+                        <td>${user.user_id}</td>
+                        <td>${user.username}</td>
+                        <td>${user.email || '-'}</td>
+                        <td>${user.phone || '-'}</td>
+                        <td>${formatDateTime(user.create_time)}</td>
+                        <td>${role}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger delete-user-btn" data-user-id="${user.user_id}" data-is-admin="${user.is_admin}">删除</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加删除用户事件
+                document.querySelectorAll('.delete-user-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        if (btn.dataset.isAdmin === 'true') {
+                            showNotification('不能删除管理员用户', true);
+                            return;
+                        }
+                        deleteUser(btn.dataset.userId);
+                    });
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="7" class="text-center">暂无用户数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 删除用户
+        async function deleteUser(userId) {
+            if (!confirm('确定要删除这个用户吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/${userId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('用户删除成功');
+                    loadUsers();
+                } else {
+                    showNotification(data.message || '删除失败', true);
+                }
+            } catch (error) {
+                console.error('Error deleting user:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 加载歌手
+        async function loadSingers(keyword = '') {
+            showLoading();
+            try {
+                let url = `${API_BASE_URL}/singers`;
+                if (keyword) {
+                    url += `?keyword=${encodeURIComponent(keyword)}`;
+                }
+                
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderSingersTable(data.data);
+                }
+            } catch (error) {
+                console.error('Error loading singers:', error);
+                showNotification('加载歌手列表失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染歌手表格
+        function renderSingersTable(singers) {
+            const tableBody = document.getElementById('singersTable');
+            tableBody.innerHTML = '';
+            
+            if (singers && singers.length > 0) {
+                singers.forEach(singer => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${singer.singer_id}</td>
+                        <td>${singer.singer_name}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-info view-concerts-btn" data-singer-id="${singer.singer_id}" data-singer-name="${singer.singer_name}">查看演唱会</button>
+                            <button class="btn btn-sm btn-outline-danger delete-singer-btn" data-singer-id="${singer.singer_id}">删除</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加查看演唱会事件
+                document.querySelectorAll('.view-concerts-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const singerId = btn.dataset.singerId;
+                        const singerName = btn.dataset.singerName;
+                        viewSingerConcerts(singerId, singerName);
+                    });
+                });
+                
+                // 添加删除歌手事件
+                document.querySelectorAll('.delete-singer-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteSinger(btn.dataset.singerId));
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="3" class="text-center">暂无歌手数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 保存歌手
+        async function saveSinger() {
+            const form = document.getElementById('addSingerForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const singerData = {
+                singer_name: document.getElementById('singerName').value
+            };
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/singers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(singerData)
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('歌手添加成功');
+                    form.reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addSingerModal'));
+                    modal.hide();
+                    loadSingers();
+                } else {
+                    showNotification(data.message || '添加失败', true);
+                }
+            } catch (error) {
+                console.error('Error saving singer:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 删除歌手
+        async function deleteSinger(singerId) {
+            if (!confirm('确定要删除这个歌手吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/singers/${singerId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('歌手删除成功');
+                    loadSingers();
+                } else {
+                    showNotification(data.message || '删除失败', true);
+                }
+            } catch (error) {
+                console.error('Error deleting singer:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 查看歌手演唱会
+        async function viewSingerConcerts(singerId, singerName) {
+            showLoading();
+            try {
+                // 更新模态框标题
+                const modalTitle = document.getElementById('singerConcertsModalLabel');
+                modalTitle.textContent = `${singerName} 的演唱会`;
+                
+                // 调用API获取歌手的演唱会
+                const response = await fetch(`${API_BASE_URL}/singers/${singerId}/concerts`);
+                const data = await response.json();
+                
+                if (data.status === 'success') {
+                    renderSingerConcertsTable(data.data, singerId);
+                    // 显示模态框
+                    const modal = new bootstrap.Modal(document.getElementById('singerConcertsModal'));
+                    modal.show();
+                } else {
+                    showNotification(data.message || '获取演唱会失败', true);
+                }
+            } catch (error) {
+                console.error('Error loading singer concerts:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染歌手演唱会表格
+        function renderSingerConcertsTable(concerts, singerId) {
+            const tableBody = document.getElementById('singerConcertsTable');
+            tableBody.innerHTML = '';
+            
+            if (concerts && concerts.length > 0) {
+                concerts.forEach(concert => {
+                    // 过滤掉当前歌手，只显示其他歌手
+                    const otherSingers = concert.singers.filter(s => s.singer_id !== parseInt(singerId));
+                    const otherSingersNames = otherSingers.map(s => s.singer_name).join('、') || '无';
+                    
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${concert.concert_id}</td>
+                        <td>${concert.concert_name}</td>
+                        <td>${concert.organizer_name}</td>
+                        <td>${formatDateTime(concert.start_time)}</td>
+                        <td>${concert.end_time ? formatDateTime(concert.end_time) : '-'}</td>
+                        <td>${otherSingersNames}</td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="6" class="text-center">暂无演唱会数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 加载主办方（使用模拟数据）
+        async function loadOrganizers(keyword = '') {
+            showLoading();
+            try {
+                // 使用模拟数据，因为数据库中没有organizer表
+                const mockOrganizers = [];
+                renderOrganizersTable(mockOrganizers);
+            } catch (error) {
+                console.error('Error loading organizers:', error);
+                showNotification('加载主办方列表失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染主办方表格
+        function renderOrganizersTable(organizers) {
+            const tableBody = document.getElementById('organizersTable');
+            tableBody.innerHTML = '';
+            
+            if (organizers && organizers.length > 0) {
+                organizers.forEach(organizer => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${organizer.organizer_id}</td>
+                        <td>${organizer.organizer_name}</td>
+                        <td>${organizer.contact_name || '-'}</td>
+                        <td>${organizer.contact_phone || '-'}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger delete-organizer-btn" data-organizer-id="${organizer.organizer_id}">删除</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加删除主办方事件
+                document.querySelectorAll('.delete-organizer-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteOrganizer(btn.dataset.organizerId));
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="5" class="text-center">暂无主办方数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 保存主办方
+        async function saveOrganizer() {
+            const form = document.getElementById('addOrganizerForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            const organizerData = {
+                organizer_name: document.getElementById('organizerName').value,
+                contact_name: document.getElementById('organizerContact').value || null,
+                contact_phone: document.getElementById('organizerPhone').value || null
+            };
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/organizers`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(organizerData)
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('主办方添加成功');
+                    form.reset();
+                    const modal = bootstrap.Modal.getInstance(document.getElementById('addOrganizerModal'));
+                    modal.hide();
+                    loadOrganizers();
+                } else {
+                    showNotification(data.message || '添加失败', true);
+                }
+            } catch (error) {
+                console.error('Error saving organizer:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 删除主办方
+        async function deleteOrganizer(organizerId) {
+            if (!confirm('确定要删除这个主办方吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/organizers/${organizerId}`, {
+                    method: 'DELETE'
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showNotification('主办方删除成功');
+                    loadOrganizers();
+                } else {
+                    showNotification(data.message || '删除失败', true);
+                }
+            } catch (error) {
+                console.error('Error deleting organizer:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 加载场馆（使用模拟数据）
+        async function loadVenuesList(keyword = '') {
+            showLoading();
+            try {
+                // 使用模拟数据，因为数据库中没有venue表
+                const mockVenues = [];
+                renderVenuesTable(mockVenues);
+            } catch (error) {
+                console.error('Error loading venues:', error);
+                showNotification('加载场馆列表失败', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染场馆表格
+        function renderVenuesTable(venues) {
+            const tableBody = document.getElementById('venuesTable');
+            tableBody.innerHTML = '';
+            
+            if (venues && venues.length > 0) {
+                venues.forEach(venue => {
+                    const row = document.createElement('tr');
+                    
+                    row.innerHTML = `
+                        <td>${venue.venue_id}</td>
+                        <td>${venue.venue_name}</td>
+                        <td>${venue.address}</td>
+                        <td>${venue.capacity}</td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-danger delete-venue-btn" data-venue-id="${venue.venue_id}">删除</button>
+                        </td>
+                    `;
+                    tableBody.appendChild(row);
+                });
+                
+                // 添加删除场馆事件
+                document.querySelectorAll('.delete-venue-btn').forEach(btn => {
+                    btn.addEventListener('click', () => deleteVenue(btn.dataset.venueId));
+                });
+            } else {
+                const row = document.createElement('tr');
+                row.innerHTML = '<td colspan="5" class="text-center">暂无场馆数据</td>';
+                tableBody.appendChild(row);
+            }
+        }
+        
+        // 保存场馆（模拟实现）
+        async function saveVenue() {
+            const form = document.getElementById('addVenueForm');
+            if (!form.checkValidity()) {
+                form.reportValidity();
+                return;
+            }
+            
+            showLoading();
+            try {
+                // 模拟保存场馆，因为数据库中没有venue表
+                showNotification('场馆添加成功（模拟）');
+                form.reset();
+                const modal = bootstrap.Modal.getInstance(document.getElementById('addVenueModal'));
+                modal.hide();
+                loadVenuesList();
+            } catch (error) {
+                console.error('Error saving venue:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 删除场馆（模拟实现）
+        async function deleteVenue(venueId) {
+            if (!confirm('确定要删除这个场馆吗？此操作不可撤销。')) {
+                return;
+            }
+            
+            showLoading();
+            try {
+                // 模拟删除场馆，因为数据库中没有venue表
+                showNotification('场馆删除成功（模拟）');
+                loadVenuesList();
+            } catch (error) {
+                console.error('Error deleting venue:', error);
+                showNotification('网络错误，请稍后重试', true);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 格式化日期时间
+        function formatDateTime(dateTime) {
+            if (!dateTime) return '';
+            const date = new Date(dateTime);
+            return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')} ${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+        }
+        
+        // 切换页面
+        function switchPage(pageId) {
+            // 隐藏所有页面
+            document.querySelectorAll('[id$="Page"]').forEach(page => {
+                page.classList.add('d-none');
+            });
+            
+            // 移除所有导航链接的active状态
+            document.querySelectorAll('.sidebar-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // 显示当前页面
+            document.getElementById(pageId).classList.remove('d-none');
+            
+            // 高亮当前导航
+            document.getElementById(`nav-${pageId.replace('Page', '')}`).classList.add('active');
+            
+            // 加载对应页面数据
+            switch (pageId) {
+                case 'dashboardPage':
+                    loadDashboardStats();
+                    break;
+                case 'concertsPage':
+                    loadConcerts();
+                    break;
+                case 'eventsPage':
+                    loadEvents();
+                    break;
+                case 'ticketsPage':
+                    loadTickets();
+                    break;
+                case 'ordersPage':
+                    loadOrders();
+                    break;
+                case 'usersPage':
+                    loadUsers();
+                    break;
+                case 'singersPage':
+                    loadSingers();
+                    break;
+                case 'organizersPage':
+                    loadOrganizers();
+                    break;
+                case 'venuesPage':
+                    loadVenuesList();
+                    break;
+            }
+        }
+        
+        // 绑定搜索事件
+        function bindSearchEvents() {
+            // 演唱会搜索
+            document.getElementById('searchConcertsBtn').addEventListener('click', () => {
+                const keyword = document.getElementById('searchConcertsInput').value;
+                // 这里可以实现按名称搜索的功能
+                loadConcerts();
+            });
+            
+            // 场次筛选
+            document.getElementById('searchEventsBtn').addEventListener('click', () => {
+                const concertId = document.getElementById('filterConcertEvents').value;
+                loadEvents(concertId);
+            });
+            
+            // 票档筛选
+            document.getElementById('searchTicketsBtn').addEventListener('click', () => {
+                const eventId = document.getElementById('filterEventTickets').value;
+                loadTickets(eventId);
+            });
+            
+            // 订单搜索
+            document.getElementById('searchOrdersBtn').addEventListener('click', () => {
+                const keyword = document.getElementById('searchOrdersInput').value;
+                const status = document.getElementById('filterOrderStatus').value;
+                loadOrders(keyword, status);
+            });
+            
+            // 用户搜索
+            document.getElementById('searchUsersBtn').addEventListener('click', () => {
+                const keyword = document.getElementById('searchUsersInput').value;
+                loadUsers(keyword);
+            });
+            
+            // 歌手搜索
+            document.getElementById('searchSingersBtn').addEventListener('click', () => {
+                const keyword = document.getElementById('searchSingersInput').value;
+                loadSingers(keyword);
+            });
+            
+            // 主办方搜索
+            document.getElementById('searchOrganizersBtn').addEventListener('click', () => {
+                const keyword = document.getElementById('searchOrganizersInput').value;
+                loadOrganizers(keyword);
+            });
+            
+            // 场馆搜索
+            document.getElementById('searchVenuesBtn').addEventListener('click', () => {
+                const keyword = document.getElementById('searchVenuesInput').value;
+                loadVenuesList(keyword);
+            });
+        }
+        
+        // 绑定模态框事件
+        function bindModalEvents() {
+            // 保存演唱会
+            document.getElementById('saveConcertBtn').addEventListener('click', saveConcert);
+            
+            // 更新演唱会
+            document.getElementById('updateConcertBtn').addEventListener('click', updateConcert);
+            
+            // 保存场次
+            document.getElementById('saveEventBtn').addEventListener('click', saveEvent);
+            
+            // 保存票档
+            document.getElementById('saveTicketBtn').addEventListener('click', saveTicket);
+            
+            // 保存歌手
+            document.getElementById('saveSingerBtn').addEventListener('click', saveSinger);
+            
+            // 保存主办方
+            document.getElementById('saveOrganizerBtn').addEventListener('click', saveOrganizer);
+            
+            // 保存场馆
+            document.getElementById('saveVenueBtn').addEventListener('click', saveVenue);
+            
+            // 打开添加演唱会模态框时加载依赖数据
+            document.getElementById('addConcertModal').addEventListener('show.bs.modal', loadConcertDependencies);
+            document.getElementById('editConcertModal').addEventListener('show.bs.modal', loadConcertDependencies);
+            
+            // 打开添加场次模态框时加载场馆数据
+            document.getElementById('addEventModal').addEventListener('show.bs.modal', loadVenues);
+            
+            // 打开添加票档模态框时加载场次数据
+            document.getElementById('addTicketModal').addEventListener('show.bs.modal', loadEventSelectors);
+        }
+        
+        // 绑定导航事件
+        function bindNavigationEvents() {
+            document.getElementById('nav-dashboard').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('dashboardPage');
+            });
+            
+            document.getElementById('nav-concerts').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('concertsPage');
+            });
+            
+            document.getElementById('nav-events').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('eventsPage');
+            });
+            
+            document.getElementById('nav-tickets').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('ticketsPage');
+            });
+            
+            document.getElementById('nav-orders').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('ordersPage');
+            });
+            
+            document.getElementById('nav-users').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('usersPage');
+            });
+            
+            document.getElementById('nav-singers').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('singersPage');
+            });
+            
+            document.getElementById('nav-organizers').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('organizersPage');
+            });
+            
+            document.getElementById('nav-venues').addEventListener('click', (e) => {
+                e.preventDefault();
+                switchPage('venuesPage');
+            });
+            
+            // 退出登录
+            document.getElementById('btn-logout').addEventListener('click', () => {
+                localStorage.removeItem('user');
+                window.location.href = 'index.html';
+            });
+            
+            // 侧边栏切换（移动端）
+            document.getElementById('toggleSidebar').addEventListener('click', () => {
+                const sidebar = document.querySelector('.sidebar');
+                sidebar.classList.toggle('transform');
+                sidebar.classList.toggle('-translate-x-full');
+            });
+        }
+        
+        // 初始化
+        function init() {
+            // 检查登录状态
+            if (!checkAdminLogin()) {
+                return;
+            }
+            
+            // 绑定事件
+            bindNavigationEvents();
+            bindModalEvents();
+            bindSearchEvents();
+            
+            // 初始化加载控制台页面
+            switchPage('dashboardPage');
+        }
+        
+        // 页面加载完成后初始化
+        document.addEventListener('DOMContentLoaded', init);
+    </script>
+</body>
+</html>
