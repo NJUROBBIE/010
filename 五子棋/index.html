@@ -1,0 +1,1282 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>演唱会抢票系统 - 用户端</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            font-family: 'Microsoft YaHei', sans-serif;
+            background-color: #f8f9fa;
+        }
+        .navbar {
+            background-color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .hero-section {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 80px 0;
+            margin-bottom: 40px;
+        }
+        .concert-card {
+            transition: transform 0.3s, box-shadow 0.3s;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .concert-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        }
+        .concert-image {
+            height: 200px;
+            background-size: cover;
+            background-position: center;
+        }
+        .login-form, .register-form {
+            max-width: 500px;
+            margin: 0 auto;
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        .ticket-item {
+            border: 1px solid #e9ecef;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            transition: all 0.3s;
+        }
+        .ticket-item:hover {
+            background-color: #f8f9fa;
+        }
+        .order-card {
+            margin-bottom: 20px;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .badge-available {
+            background-color: #28a745;
+        }
+        .badge-soldout {
+            background-color: #dc3545;
+        }
+        .btn-rush {
+            background-color: #dc3545;
+            color: white;
+            transition: all 0.3s;
+        }
+        .btn-rush:hover {
+            background-color: #c82333;
+            transform: scale(1.05);
+        }
+        .btn-rush:disabled {
+            background-color: #6c757d;
+            transform: none;
+        }
+        .favorite-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(255,255,255,0.8);
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+        }
+        .favorite-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+        .favorite-btn.active {
+            background: #dc3545;
+            color: white;
+        }
+        .nav-link.active {
+            font-weight: bold;
+            color: #667eea !important;
+        }
+        .toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 1055;
+        }
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255,255,255,0.8);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 9999;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+    <!-- 加载中遮罩 -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">加载中...</span>
+        </div>
+    </div>
+
+    <!-- 导航栏 -->
+    <nav class="navbar navbar-expand-lg navbar-light sticky-top">
+        <div class="container">
+            <a class="navbar-brand" href="#" style="font-weight: bold; font-size: 1.5rem; color: #667eea;">EasyCatch</a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link active" id="nav-concerts" href="#">演唱会列表</a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" id="nav-favorites" href="#">我的收藏</a>
+                    </li>
+                </ul>
+                <ul class="navbar-nav">
+                    <li class="nav-item" id="userMenu">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary dropdown-toggle" type="button" id="dropdownMenuButton" data-bs-toggle="dropdown">
+                                用户菜单
+                            </button>
+                            <ul class="dropdown-menu dropdown-menu-end">
+                                <li><a class="dropdown-item" id="menu-orders" href="#">我的订单</a></li>
+                                <li><a class="dropdown-item" id="menu-profile" href="#">个人信息</a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><a class="dropdown-item" id="menu-logout" href="#">退出登录</a></li>
+                            </ul>
+                        </div>
+                    </li>
+                    <li class="nav-item" id="loginRegisterMenu">
+                        <button class="btn btn-primary" id="btn-login">登录</button>
+                        <button class="btn btn-outline-primary ms-2" id="btn-register">注册</button>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- 提示框 -->
+    <div class="toast-container">
+        <div class="toast" id="messageToast" role="alert" aria-live="assertive" aria-atomic="true">
+            <div class="toast-header">
+                <strong class="me-auto">提示</strong>
+                <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+            </div>
+            <div class="toast-body" id="toastMessage">
+            </div>
+        </div>
+    </div>
+
+    <!-- 主要内容区域 -->
+    <div class="container" id="mainContent">
+        <!-- 英雄区 -->
+        <div class="hero-section text-center">
+            <h1>轻松捕捉精彩瞬间</h1>
+            <p class="lead mt-3">发现并抢购热门演唱会门票，不错过任何精彩演出</p>
+            <div class="mt-5">
+                <div class="input-group w-50 mx-auto">
+                    <input type="text" class="form-control" placeholder="搜索演唱会或歌手" id="searchInput">
+                    <button class="btn btn-light" type="button" id="btn-search">搜索</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 演唱会列表 -->
+        <div class="row mt-5" id="concertsContainer">
+            <!-- 演唱会卡片将通过JavaScript动态加载 -->
+        </div>
+    </div>
+
+    <!-- 演唱会详情模态框 -->
+    <div class="modal fade" id="concertDetailModal" tabindex="-1" aria-labelledby="concertDetailLabel" aria-hidden="true">
+        <div class="modal-dialog modal-xl">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="concertDetailLabel">演唱会详情</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body" id="concertDetailContent">
+                    <!-- 内容将通过JavaScript动态加载 -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 登录模态框 -->
+    <div class="modal fade" id="loginModal" tabindex="-1" aria-labelledby="loginModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="loginModalLabel">用户登录</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="login-form">
+                        <div class="mb-3">
+                            <label for="loginUsername" class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="loginUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="loginPassword" class="form-label">密码</label>
+                            <input type="password" class="form-control" id="loginPassword" required>
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" id="btn-do-login">登录</button>
+                        <div class="mt-3 text-center">
+                            <small>还没有账号？<a href="#" id="switch-to-register">立即注册</a></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 注册模态框 -->
+    <div class="modal fade" id="registerModal" tabindex="-1" aria-labelledby="registerModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="registerModalLabel">用户注册</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="register-form">
+                        <div class="mb-3">
+                            <label for="registerUsername" class="form-label">用户名</label>
+                            <input type="text" class="form-control" id="registerUsername" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerPassword" class="form-label">密码</label>
+                            <input type="password" class="form-control" id="registerPassword" required>
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerEmail" class="form-label">邮箱（可选）</label>
+                            <input type="email" class="form-control" id="registerEmail">
+                        </div>
+                        <div class="mb-3">
+                            <label for="registerPhone" class="form-label">手机号（可选）</label>
+                            <input type="tel" class="form-control" id="registerPhone">
+                        </div>
+                        <button type="button" class="btn btn-primary w-100" id="btn-do-register">注册</button>
+                        <div class="mt-3 text-center">
+                            <small>已有账号？<a href="#" id="switch-to-login">立即登录</a></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 我的订单页面 -->
+    <div class="container mt-5 d-none" id="ordersPage">
+        <h2 class="mb-4">我的订单</h2>
+        <div id="ordersContainer">
+            <!-- 订单将通过JavaScript动态加载 -->
+        </div>
+    </div>
+
+    <!-- 我的收藏页面 -->
+    <div class="container mt-5 d-none" id="favoritesPage">
+        <h2 class="mb-4">我的收藏</h2>
+        <div class="row" id="favoritesContainer">
+            <!-- 收藏的演唱会将通过JavaScript动态加载 -->
+        </div>
+    </div>
+
+    <!-- 个人信息页面 -->
+    <div class="container mt-5 d-none" id="profilePage">
+        <h2 class="mb-4">个人信息</h2>
+        <div class="row">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <form id="profileForm">
+                            <div class="mb-3">
+                                <label for="profileUsername" class="form-label">用户名</label>
+                                <input type="text" class="form-control" id="profileUsername" disabled>
+                            </div>
+                            <div class="mb-3">
+                                <label for="profileEmail" class="form-label">邮箱</label>
+                                <input type="email" class="form-control" id="profileEmail">
+                            </div>
+                            <div class="mb-3">
+                                <label for="profilePhone" class="form-label">手机号</label>
+                                <input type="tel" class="form-control" id="profilePhone">
+                            </div>
+                            <div class="mb-3">
+                                <label for="profileRealName" class="form-label">真实姓名</label>
+                                <input type="text" class="form-control" id="profileRealName">
+                            </div>
+                            <button type="submit" class="btn btn-primary">保存修改</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-body">
+                        <h5 class="card-title">账户统计</h5>
+                        <canvas id="userStatsChart" width="400" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // API基础URL
+        const API_BASE_URL = 'http://127.0.0.1:5000/api';
+        
+        // 当前用户信息
+        let currentUser = null;
+        
+        // DOM元素
+        const loadingOverlay = document.getElementById('loadingOverlay');
+        const messageToast = new bootstrap.Toast(document.getElementById('messageToast'));
+        const toastMessage = document.getElementById('toastMessage');
+        
+        // 显示消息提示
+        function showMessage(message, isError = false) {
+            toastMessage.textContent = message;
+            if (isError) {
+                toastMessage.classList.add('text-danger');
+            } else {
+                toastMessage.classList.remove('text-danger');
+            }
+            messageToast.show();
+        }
+        
+        // 显示加载状态
+        function showLoading() {
+            loadingOverlay.style.display = 'flex';
+        }
+        
+        // 隐藏加载状态
+        function hideLoading() {
+            loadingOverlay.style.display = 'none';
+        }
+        
+        // 检查用户登录状态
+        function checkLoginStatus() {
+            const userJson = localStorage.getItem('user');
+            if (userJson) {
+                currentUser = JSON.parse(userJson);
+                updateUIForLoggedInUser();
+                return true;
+            }
+            return false;
+        }
+        
+        // 更新登录后的UI
+        function updateUIForLoggedInUser() {
+            document.getElementById('userMenu').style.display = 'block';
+            document.getElementById('loginRegisterMenu').style.display = 'none';
+        }
+        
+        // 更新未登录的UI
+        function updateUIForLoggedOutUser() {
+            document.getElementById('userMenu').style.display = 'none';
+            document.getElementById('loginRegisterMenu').style.display = 'block';
+        }
+        
+        // 获取演唱会列表
+        async function fetchConcerts() {
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/concerts`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderConcerts(data.data);
+                } else {
+                    showMessage('获取演唱会列表失败', true);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                console.error('Error fetching concerts:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染演唱会列表
+        function renderConcerts(concerts) {
+            const container = document.getElementById('concertsContainer');
+            container.innerHTML = '';
+            
+            if (concerts.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center py-5"><p class="text-muted">暂无演唱会信息</p></div>';
+                return;
+            }
+            
+            concerts.forEach(concert => {
+                const singers = concert.singers.map(s => s.singer_name).join('、');
+                const isFavorite = currentUser ? checkIsFavorite(concert.concert_id) : false;
+                
+                const card = document.createElement('div');
+                card.className = 'col-md-4 mb-4';
+                card.innerHTML = `
+                    <div class="card concert-card">
+                        <div class="concert-image" style="background-image: url('https://picsum.photos/seed/${concert.concert_id}/800/400');">
+                            <button class="favorite-btn ${isFavorite ? 'active' : ''}" data-concert-id="${concert.concert_id}">
+                                <i class="bi ${isFavorite ? 'bi-heart-fill' : 'bi-heart'}"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">${concert.concert_name}</h5>
+                            <p class="card-text text-muted">${singers}</p>
+                            <p class="card-text">主办方：${concert.organizer_name}</p>
+                            <p class="card-text">开始时间：${formatDateTime(concert.start_time)}</p>
+                            <button class="btn btn-primary w-100 view-concert-btn" data-concert-id="${concert.concert_id}">查看详情</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+            // 添加事件监听器
+            document.querySelectorAll('.view-concert-btn').forEach(btn => {
+                btn.addEventListener('click', () => viewConcertDetail(btn.dataset.concertId));
+            });
+            
+            document.querySelectorAll('.favorite-btn').forEach(btn => {
+                btn.addEventListener('click', toggleFavorite);
+            });
+        }
+        
+        // 格式化日期时间
+        function formatDateTime(dateTimeString) {
+            const date = new Date(dateTimeString);
+            return date.toLocaleString('zh-CN', {
+                year: 'numeric',
+                month: '2-digit',
+                day: '2-digit',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+        }
+        
+        // 查看演唱会详情
+        async function viewConcertDetail(concertId) {
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/concerts/${concertId}`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderConcertDetail(data.data);
+                    const modal = new bootstrap.Modal(document.getElementById('concertDetailModal'));
+                    modal.show();
+                } else {
+                    showMessage('获取演唱会详情失败', true);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                console.error('Error fetching concert detail:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染演唱会详情
+        function renderConcertDetail(concert) {
+            const container = document.getElementById('concertDetailContent');
+            const singers = concert.singers.map(s => s.singer_name).join('、');
+            
+            let eventsHtml = '';
+            concert.events.forEach(event => {
+                eventsHtml += `
+                    <div class="event-item mb-4 p-3 border rounded">
+                        <h6>${event.venue_name}</h6>
+                        <p>${event.performance_date} ${event.performance_start_time}</p>
+                        <button class="btn btn-sm btn-outline-primary view-tickets-btn" data-event-id="${event.event_id}">查看票档</button>
+                        <div class="tickets-container mt-3" id="tickets-${event.event_id}"></div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <img src="https://picsum.photos/seed/${concert.concert_id}/800/500" class="img-fluid rounded" alt="${concert.concert_name}">
+                    </div>
+                    <div class="col-md-6">
+                        <h3>${concert.concert_name}</h3>
+                        <p class="text-muted">${singers}</p>
+                        <p><strong>主办方：</strong>${concert.organizer_name}</p>
+                        <p><strong>开始时间：</strong>${formatDateTime(concert.start_time)}</p>
+                        ${concert.end_time ? `<p><strong>结束时间：</strong>${formatDateTime(concert.end_time)}</p>` : ''}
+                    </div>
+                </div>
+                <div class="mt-5">
+                    <h4>演出场次</h4>
+                    ${eventsHtml}
+                </div>
+            `;
+            
+            // 添加查看票档事件监听器
+            document.querySelectorAll('.view-tickets-btn').forEach(btn => {
+                btn.addEventListener('click', async function() {
+                    const eventId = this.dataset.eventId;
+                    await fetchEventTickets(eventId);
+                });
+            });
+        }
+        
+        // 获取场次的票档信息
+        async function fetchEventTickets(eventId) {
+            try {
+                const response = await fetch(`${API_BASE_URL}/events/${eventId}/tickets`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderEventTickets(eventId, data.data);
+                } else {
+                    showMessage('获取票档信息失败', true);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                console.error('Error fetching tickets:', error);
+            }
+        }
+        
+        // 渲染场次的票档信息
+        function renderEventTickets(eventId, tickets) {
+            const container = document.getElementById(`tickets-${eventId}`);
+            
+            if (tickets.length === 0) {
+                container.innerHTML = '<p class="text-muted">暂无票档信息</p>';
+                return;
+            }
+            
+            // 获取场次的日期时间信息
+            const eventItem = container.closest('.event-item');
+            let isEventExpiredFlag = false;
+            if (eventItem) {
+                const dateTimeText = eventItem.querySelector('p').textContent.trim();
+                isEventExpiredFlag = isEventExpired(dateTimeText);
+            }
+            
+            let html = '<div class="row">';
+            tickets.forEach(ticket => {
+                const isAvailable = ticket.remaining_quantity > 0 && !isEventExpiredFlag;
+                const badgeClass = isEventExpiredFlag ? 'badge-expired' : (isAvailable ? 'badge-available' : 'badge-soldout');
+                const badgeText = isEventExpiredFlag ? '已过期' : (isAvailable ? '可抢票' : '已售罄');
+                
+                html += `
+                    <div class="col-md-4">
+                        <div class="ticket-item">
+                            <h6>${ticket.ticket_name}</h6>
+                            <p class="text-primary fs-5">¥${ticket.price}</p>
+                            <p class="text-sm text-muted">剩余：${ticket.remaining_quantity}/${ticket.total_quantity}</p>
+                            ${isEventExpiredFlag ? '<p class="text-sm text-danger">该演出已过期</p>' : ''}
+                            <span class="badge ${badgeClass}">
+                                ${badgeText}
+                            </span>
+                            <button class="btn btn-rush w-100 mt-2" 
+                                    data-event-id="${eventId}" 
+                                    data-ticket-id="${ticket.ticket_id}"
+                                    ${!isAvailable || !currentUser ? 'disabled' : ''}>
+                                ${!currentUser ? '请先登录' : isEventExpiredFlag ? '已过期' : isAvailable ? '立即抢票' : '已售罄'}
+                            </button>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+            
+            // 添加抢票事件监听器
+            document.querySelectorAll('.btn-rush:not([disabled])').forEach(btn => {
+                btn.addEventListener('click', handleRushTicket);
+            });
+        }
+        
+        // 处理抢票
+        async function handleRushTicket(event) {
+            if (!currentUser) {
+                showMessage('请先登录', true);
+                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                loginModal.show();
+                return;
+            }
+            
+            const button = event.currentTarget;
+            const eventId = button.dataset.eventId;
+            const ticketId = button.dataset.ticketId;
+            
+            // 获取演出时间信息
+            const eventItem = button.closest('.event-item');
+            if (eventItem) {
+                const dateTimeText = eventItem.querySelector('p').textContent.trim();
+                // 检查演出时间是否已过期
+                if (isEventExpired(dateTimeText)) {
+                    showMessage('该演出已过期，无法抢票', true);
+                    return;
+                }
+            }
+            
+            // 禁用按钮防止重复点击
+            button.disabled = true;
+            button.textContent = '抢票中...';
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/rush_ticket`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: currentUser.user_id,
+                        event_id: parseInt(eventId),
+                        ticket_id: parseInt(ticketId)
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showMessage('抢票成功！');
+                    // 重新加载票档信息
+                    fetchEventTickets(eventId);
+                } else {
+                    showMessage(data.message || '抢票失败', true);
+                    button.disabled = false;
+                    button.textContent = '立即抢票';
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                button.disabled = false;
+                button.textContent = '立即抢票';
+                console.error('Error rushing ticket:', error);
+            }
+        }
+        
+        // 检查演出是否已过期
+        function isEventExpired(dateTimeText) {
+            // 解析日期时间字符串，格式为：YYYY-MM-DD HH:mm
+            const dateTimeRegex = /(\d{4}-\d{2}-\d{2})\s+(\d{2}:\d{2})/;
+            const match = dateTimeText.match(dateTimeRegex);
+            
+            if (match) {
+                const [_, dateStr, timeStr] = match;
+                const eventDateTime = new Date(`${dateStr}T${timeStr}:00`);
+                const now = new Date();
+                
+                // 如果演出时间已过，返回true
+                return eventDateTime < now;
+            }
+            
+            // 如果无法解析日期时间，默认返回false（避免误判）
+            return false;
+        }
+        
+        // 检查是否已收藏
+        function checkIsFavorite(concertId) {
+            const favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+            return favorites.includes(concertId);
+        }
+        
+        // 切换收藏状态
+        async function toggleFavorite(event) {
+            if (!currentUser) {
+                showMessage('请先登录', true);
+                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                loginModal.show();
+                return;
+            }
+            
+            const button = event.currentTarget;
+            const concertId = button.dataset.concertId;
+            const isCurrentlyFavorite = button.classList.contains('active');
+            
+            try {
+                const endpoint = isCurrentlyFavorite ? 'unfavorite_concert' : 'favorite_concert';
+                const response = await fetch(`${API_BASE_URL}/${endpoint}`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        user_id: currentUser.user_id,
+                        concert_id: parseInt(concertId)
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    // 更新UI
+                    if (isCurrentlyFavorite) {
+                        button.classList.remove('active');
+                        button.innerHTML = '<i class="bi bi-heart"></i>';
+                        showMessage('已取消收藏');
+                    } else {
+                        button.classList.add('active');
+                        button.innerHTML = '<i class="bi bi-heart-fill"></i>';
+                        showMessage('收藏成功');
+                    }
+                    
+                    // 更新本地存储
+                    updateLocalFavorites(concertId, !isCurrentlyFavorite);
+                } else {
+                    showMessage(data.message || '操作失败', true);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                console.error('Error toggling favorite:', error);
+            }
+        }
+        
+        // 更新本地收藏列表
+        function updateLocalFavorites(concertId, isFavorite) {
+            let favorites = JSON.parse(localStorage.getItem('favorites') || '[]');
+            
+            if (isFavorite && !favorites.includes(concertId)) {
+                favorites.push(concertId);
+            } else if (!isFavorite && favorites.includes(concertId)) {
+                favorites = favorites.filter(id => id !== concertId);
+            }
+            
+            localStorage.setItem('favorites', JSON.stringify(favorites));
+        }
+        
+        // 获取用户收藏的演唱会
+        async function fetchUserFavorites() {
+            if (!currentUser) return;
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/${currentUser.user_id}/favorites`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderUserFavorites(data.data);
+                    // 更新本地存储
+                    const favoriteIds = data.data.map(c => c.concert_id);
+                    localStorage.setItem('favorites', JSON.stringify(favoriteIds));
+                } else {
+                    showMessage('获取收藏列表失败', true);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                console.error('Error fetching favorites:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染用户收藏的演唱会
+        function renderUserFavorites(favorites) {
+            const container = document.getElementById('favoritesContainer');
+            container.innerHTML = '';
+            
+            if (favorites.length === 0) {
+                container.innerHTML = '<div class="col-12 text-center py-5"><p class="text-muted">您还没有收藏任何演唱会</p></div>';
+                return;
+            }
+            
+            favorites.forEach(concert => {
+                const card = document.createElement('div');
+                card.className = 'col-md-4 mb-4';
+                card.innerHTML = `
+                    <div class="card concert-card">
+                        <div class="concert-image" style="background-image: url('https://picsum.photos/seed/${concert.concert_id}/800/400');">
+                            <button class="favorite-btn active" data-concert-id="${concert.concert_id}">
+                                <i class="bi bi-heart-fill"></i>
+                            </button>
+                        </div>
+                        <div class="card-body">
+                            <h5 class="card-title">${concert.concert_name}</h5>
+                            <p class="card-text">主办方：${concert.organizer_name}</p>
+                            <p class="card-text">开始时间：${formatDateTime(concert.start_time)}</p>
+                            <button class="btn btn-primary w-100 view-concert-btn" data-concert-id="${concert.concert_id}">查看详情</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+            
+            // 添加事件监听器
+            document.querySelectorAll('.view-concert-btn').forEach(btn => {
+                btn.addEventListener('click', () => viewConcertDetail(btn.dataset.concert_id));
+            });
+            
+            document.querySelectorAll('.favorite-btn').forEach(btn => {
+                btn.addEventListener('click', toggleFavorite);
+            });
+        }
+        
+        // 获取用户订单
+        async function fetchUserOrders() {
+            if (!currentUser) return;
+            
+            showLoading();
+            try {
+                const response = await fetch(`${API_BASE_URL}/users/${currentUser.user_id}/orders`);
+                const data = await response.json();
+                if (data.status === 'success') {
+                    renderUserOrders(data.data);
+                } else {
+                    showMessage('获取订单列表失败', true);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                console.error('Error fetching orders:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+        
+        // 渲染用户订单
+        function renderUserOrders(orders) {
+            const container = document.getElementById('ordersContainer');
+            container.innerHTML = '';
+            
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="text-center py-5"><p class="text-muted">您还没有订单</p></div>';
+                return;
+            }
+            
+            orders.forEach(order => {
+                const paymentStatus = order.payment_status === 1 ? '已支付' : '未支付';
+                const statusClass = order.payment_status === 1 ? 'text-success' : 'text-warning';
+                
+                let seatsHtml = '';
+                order.seats.forEach(seat => {
+                    seatsHtml += `
+                        <div class="border p-3 mb-2 rounded">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>演唱会：</strong>${seat.concert_name}</p>
+                                    <p><strong>场馆：</strong>${seat.venue_name}</p>
+                                    <p><strong>日期：</strong>${seat.performance_date}</p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>票档：</strong>${seat.ticket_name}</p>
+                                    <p><strong>座位号：</strong>${seat.seat_number}</p>
+                                    <p><strong>票价：</strong>¥${seat.ticket_price}</p>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                const orderCard = document.createElement('div');
+                orderCard.className = 'card order-card';
+                orderCard.innerHTML = `
+                    <div class="card-header bg-light">
+                        <div class="row justify-content-between">
+                            <div>
+                                <strong>订单号：</strong>${order.order_id}
+                            </div>
+                            <div class="${statusClass}">
+                                <strong>状态：</strong>${paymentStatus}
+                            </div>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        ${seatsHtml}
+                    </div>
+                    <div class="card-footer bg-light">
+                        <div class="row justify-content-between">
+                            <div>
+                                <small class="text-muted">下单时间：${formatDateTime(order.create_time)}</small>
+                            </div>
+                            <div>
+                                <strong>总价：</strong>¥${order.order_amount}
+                            </div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(orderCard);
+            });
+        }
+        
+        // 登录
+        // 表单验证工具函数
+        function validateUsername(username) {
+            if (!username || username.trim() === '') {
+                return { isValid: false, message: '用户名不能为空' };
+            }
+            if (username.length < 3 || username.length > 20) {
+                return { isValid: false, message: '用户名长度应为3-20个字符' };
+            }
+            return { isValid: true };
+        }
+        
+        function validatePassword(password) {
+            if (!password) {
+                return { isValid: false, message: '密码不能为空' };
+            }
+            if (password.length < 6) {
+                return { isValid: false, message: '密码长度不能少于6个字符' };
+            }
+            return { isValid: true };
+        }
+        
+        function validateEmail(email) {
+            if (!email || email.trim() === '') {
+                return { isValid: true }; // 邮箱是可选的
+            }
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                return { isValid: false, message: '请输入有效的邮箱地址' };
+            }
+            return { isValid: true };
+        }
+        
+        function validatePhone(phone) {
+            if (!phone || phone.trim() === '') {
+                return { isValid: true }; // 手机号是可选的
+            }
+            const phoneRegex = /^1[3-9]\d{9}$/;
+            if (!phoneRegex.test(phone)) {
+                return { isValid: false, message: '请输入有效的手机号' };
+            }
+            return { isValid: true };
+        }
+        
+        // 添加表单错误提示
+        function showFieldError(elementId, message) {
+            const element = document.getElementById(elementId);
+            // 移除之前的错误提示
+            const existingError = element.parentElement.querySelector('.error-message');
+            if (existingError) {
+                existingError.remove();
+            }
+            
+            // 添加新的错误提示
+            const errorDiv = document.createElement('div');
+            errorDiv.className = 'error-message text-danger text-sm mt-1';
+            errorDiv.textContent = message;
+            element.classList.add('is-invalid');
+            element.parentElement.appendChild(errorDiv);
+        }
+        
+        // 清除表单错误提示
+        function clearFieldErrors(formSelector) {
+            const fields = document.querySelectorAll(`${formSelector} input`);
+            fields.forEach(field => {
+                field.classList.remove('is-invalid');
+                const errorElement = field.parentElement.querySelector('.error-message');
+                if (errorElement) {
+                    errorElement.remove();
+                }
+            });
+        }
+        
+        async function login() {
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            // 清除之前的错误提示
+            clearFieldErrors('.login-form');
+            
+            // 验证用户名
+            const usernameValidation = validateUsername(username);
+            if (!usernameValidation.isValid) {
+                showFieldError('loginUsername', usernameValidation.message);
+                return;
+            }
+            
+            // 验证密码
+            const passwordValidation = validatePassword(password);
+            if (!passwordValidation.isValid) {
+                showFieldError('loginPassword', passwordValidation.message);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/login`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ username, password })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    currentUser = data.data;
+                    localStorage.setItem('user', JSON.stringify(currentUser));
+                    showMessage('登录成功');
+                    
+                    // 关闭登录模态框
+                    const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+                    loginModal.hide();
+                    
+                    // 更新UI
+                    updateUIForLoggedInUser();
+                    
+                    // 如果是管理员，跳转到管理员页面
+                    if (currentUser.is_admin) {
+                        window.location.href = 'admin.html';
+                    } else {
+                        // 刷新演唱会列表
+                        fetchConcerts();
+                        // 获取收藏列表
+                        fetchUserFavorites();
+                    }
+                } else {
+                    showMessage(data.message || '登录失败', true);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                console.error('Error logging in:', error);
+            }
+        }
+        
+        // 注册
+        async function register() {
+            const username = document.getElementById('registerUsername').value;
+            const password = document.getElementById('registerPassword').value;
+            const email = document.getElementById('registerEmail').value;
+            const phoneNumber = document.getElementById('registerPhone').value;
+            
+            // 清除之前的错误提示
+            clearFieldErrors('.register-form');
+            
+            // 验证用户名
+            const usernameValidation = validateUsername(username);
+            if (!usernameValidation.isValid) {
+                showFieldError('registerUsername', usernameValidation.message);
+                return;
+            }
+            
+            // 验证密码
+            const passwordValidation = validatePassword(password);
+            if (!passwordValidation.isValid) {
+                showFieldError('registerPassword', passwordValidation.message);
+                return;
+            }
+            
+            // 验证邮箱（如果填写）
+            const emailValidation = validateEmail(email);
+            if (!emailValidation.isValid) {
+                showFieldError('registerEmail', emailValidation.message);
+                return;
+            }
+            
+            // 验证手机号（如果填写）
+            const phoneValidation = validatePhone(phoneNumber);
+            if (!phoneValidation.isValid) {
+                showFieldError('registerPhone', phoneValidation.message);
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_BASE_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ 
+                        username, 
+                        password, 
+                        email, 
+                        phone_number: phoneNumber 
+                    })
+                });
+                
+                const data = await response.json();
+                if (data.status === 'success') {
+                    showMessage('注册成功，请登录');
+                    
+                    // 关闭注册模态框，打开登录模态框
+                    const registerModal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+                    registerModal.hide();
+                    
+                    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                } else {
+                    showMessage(data.message || '注册失败', true);
+                }
+            } catch (error) {
+                showMessage('网络错误，请稍后重试', true);
+                console.error('Error registering:', error);
+            }
+        }
+        
+        // 退出登录
+        function logout() {
+            localStorage.removeItem('user');
+            localStorage.removeItem('favorites');
+            currentUser = null;
+            updateUIForLoggedOutUser();
+            showMessage('已退出登录');
+            // 刷新演唱会列表
+            fetchConcerts();
+            // 显示主页面
+            showPage('main');
+        }
+        
+        // 显示指定页面
+        function showPage(pageName) {
+            // 隐藏所有页面
+            document.getElementById('mainContent').classList.add('d-none');
+            document.getElementById('ordersPage').classList.add('d-none');
+            document.getElementById('favoritesPage').classList.add('d-none');
+            document.getElementById('profilePage').classList.add('d-none');
+            
+            // 激活对应的导航项
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.classList.remove('active');
+            });
+            
+            // 显示选中的页面
+            switch(pageName) {
+                case 'main':
+                    document.getElementById('mainContent').classList.remove('d-none');
+                    document.getElementById('nav-concerts').classList.add('active');
+                    break;
+                case 'orders':
+                    if (!checkLoginStatus()) {
+                        showMessage('请先登录', true);
+                        return;
+                    }
+                    document.getElementById('ordersPage').classList.remove('d-none');
+                    fetchUserOrders();
+                    break;
+                case 'favorites':
+                    if (!checkLoginStatus()) {
+                        showMessage('请先登录', true);
+                        return;
+                    }
+                    document.getElementById('favoritesPage').classList.remove('d-none');
+                    document.getElementById('nav-favorites').classList.add('active');
+                    fetchUserFavorites();
+                    break;
+                case 'profile':
+                    if (!checkLoginStatus()) {
+                        showMessage('请先登录', true);
+                        return;
+                    }
+                    document.getElementById('profilePage').classList.remove('d-none');
+                    loadUserProfile();
+                    break;
+            }
+        }
+        
+        // 加载用户个人信息
+        function loadUserProfile() {
+            if (!currentUser) return;
+            
+            document.getElementById('profileUsername').value = currentUser.username;
+            // 这里可以从服务器获取更详细的用户信息
+        }
+        
+        // 事件监听器
+        document.addEventListener('DOMContentLoaded', function() {
+            // 检查登录状态
+            checkLoginStatus();
+            
+            // 获取演唱会列表
+            fetchConcerts();
+            
+            // 登录按钮事件
+            document.getElementById('btn-login').addEventListener('click', () => {
+                const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                loginModal.show();
+            });
+            
+            // 注册按钮事件
+            document.getElementById('btn-register').addEventListener('click', () => {
+                const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+                registerModal.show();
+            });
+            
+            // 执行登录
+            document.getElementById('btn-do-login').addEventListener('click', login);
+            
+            // 执行注册
+            document.getElementById('btn-do-register').addEventListener('click', register);
+            
+            // 切换到注册
+            document.getElementById('switch-to-register').addEventListener('click', (e) => {
+                e.preventDefault();
+                const loginModal = bootstrap.Modal.getInstance(document.getElementById('loginModal'));
+                loginModal.hide();
+                
+                setTimeout(() => {
+                    const registerModal = new bootstrap.Modal(document.getElementById('registerModal'));
+                    registerModal.show();
+                }, 300);
+            });
+            
+            // 切换到登录
+            document.getElementById('switch-to-login').addEventListener('click', (e) => {
+                e.preventDefault();
+                const registerModal = bootstrap.Modal.getInstance(document.getElementById('registerModal'));
+                registerModal.hide();
+                
+                setTimeout(() => {
+                    const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
+                    loginModal.show();
+                }, 300);
+            });
+            
+            // 退出登录
+            document.getElementById('menu-logout').addEventListener('click', logout);
+            
+            // 导航菜单事件
+            document.getElementById('nav-concerts').addEventListener('click', (e) => {
+                e.preventDefault();
+                showPage('main');
+            });
+            
+            document.getElementById('nav-favorites').addEventListener('click', (e) => {
+                e.preventDefault();
+                showPage('favorites');
+            });
+            
+            document.getElementById('menu-orders').addEventListener('click', (e) => {
+                e.preventDefault();
+                showPage('orders');
+            });
+            
+            document.getElementById('menu-profile').addEventListener('click', (e) => {
+                e.preventDefault();
+                showPage('profile');
+            });
+            
+            // 搜索按钮
+            document.getElementById('btn-search').addEventListener('click', () => {
+                const keyword = document.getElementById('searchInput').value.trim();
+                if (keyword) {
+                    // 这里可以实现搜索功能
+                    showMessage(`搜索：${keyword}`);
+                }
+            });
+            
+            // 回车键搜索
+            document.getElementById('searchInput').addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('btn-search').click();
+                }
+            });
+            
+            // 个人信息表单提交
+            document.getElementById('profileForm').addEventListener('submit', (e) => {
+                e.preventDefault();
+                // 这里可以实现个人信息更新
+                showMessage('保存成功');
+            });
+        });
+    </script>
+</body>
+</html>
